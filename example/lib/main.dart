@@ -111,7 +111,6 @@ class _MyAppState extends State<MyApp> {
   }
 
   Future<void> _cropImage() async {
-    final scale = cropKey.currentState.scale;
     final area = cropKey.currentState.area;
     if (area == null) {
       // cannot crop, widget is not setup
@@ -122,7 +121,7 @@ class _MyAppState extends State<MyApp> {
     // this will sample image in higher resolution to make cropped image larger
     final sample = await ImageCrop.sampleImage(
       file: _file,
-      preferredSize: (2000 / scale).round(),
+      preferredSize: (2000 / 1.0).round(),
     );
 
     final file = await ImageCrop.cropImage(
