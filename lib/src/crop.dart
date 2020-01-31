@@ -322,6 +322,23 @@ class CropState extends State<Crop> with TickerProviderStateMixin, Drag {
     }
   }
 
+  bool _shouldMoveCropRect(Offset localPoint) {
+    final boundaries = _boundaries;
+    final viewRect = Rect.fromLTWH(
+      _boundaries.width * _area.left,
+      boundaries.height * _area.top,
+      boundaries.width * _area.width,
+      boundaries.height * _area.height,
+    );
+
+    return Rect.fromLTWH(
+      viewRect.left + _kCropHandleHitSize/2,
+      viewRect.bottom - _kCropHandleHitSize/2,
+      viewRect.width - _kCropHandleHitSize,
+      viewRect.height - _kCropHandleHitSize,
+    ).contains(localPoint);
+  }
+
   void _handleScaleEnd(ScaleEndDetails details) {
     _deactivate();
   }
@@ -402,15 +419,34 @@ class CropState extends State<Crop> with TickerProviderStateMixin, Drag {
       areaTop = _area.bottom - _area.height;
       areaBottom = _area.bottom;
     }
-    
+
+    setState(() {
+      _area = Rect.fromLTRB(areaLeft, areaTop, areaRight, areaBottom);
+    });
+  }
+
+  void _moveCropArea({double x, double y}) {
+    var areaLeft = _area.left + (x ?? 0.0);
+    var areaTop = _area.top + (y ?? 0.0);
+    var areaRight = _area.right + (x ?? 0.0);
+    var areaBottom = _area.bottom + (y ?? 0.0);
+
+    // ensure to remain within bounds of the view
+    if (areaLeft < 0.0 || areaRight > 1.0 || areaTop < _previousArea.top || areaBottom > _previousArea.bottom) {
+      return;
+    } 
     setState(() {
       _area = Rect.fromLTRB(areaLeft, areaTop, areaRight, areaBottom);
     });
   }
 
   void _handleScaleUpdate(ScaleUpdateDetails details) {
-    if (_action == _CropAction.none && _handle != _CropHandleSide.none) {
-      _action = _CropAction.cropping;
+    if (_action == _CropAction.none){
+      if (_handle == _CropHandleSide.none) {
+        _action = _CropAction.moving;
+      } else {
+        _action = _CropAction.cropping;
+      }
     }
 
     if (_action == _CropAction.cropping) {
@@ -437,7 +473,14 @@ class CropState extends State<Crop> with TickerProviderStateMixin, Drag {
       } else if (_handle == _CropHandleSide.bottomRight) {
         _updateArea(right: dx, bottom: dy);
       }
-    }
+    } else if (_action == _CropAction.moving && _shouldMoveCropRect(details.focalPoint)) {
+      final delta = details.focalPoint - _lastFocalPoint;
+      _lastFocalPoint = details.focalPoint;
+      final dx = delta.dx / _boundaries.width;
+      final dy = delta.dy / _boundaries.height;
+      //TODO: handle crop box movement
+      // _moveCropArea(x: dx , y: dy);
+    } 
   }
 }
 
