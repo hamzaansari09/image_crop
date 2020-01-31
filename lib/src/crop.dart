@@ -6,11 +6,21 @@ const _kCropGridColor = const Color.fromRGBO(0xd0, 0xd0, 0xd0, 0.9);
 const _kCropOverlayColor = const Color.fromRGBO(0x0, 0x0, 0x0, 0.3);
 const _kCropHandleSize = 10.0;
 const _kCropHandleHitSize = 48.0;
-const _kCropMinFraction = 0.1;
+const _kCropMinFraction = 0.2;
 const _kCropBorderColor = Color(0xff55bbea);
 
-enum _CropAction { none, cropping }
-enum _CropHandleSide { none, top, left, right, bottom, topLeft, topRight, bottomLeft, bottomRight }
+enum _CropAction { none, cropping, moving }
+enum _CropHandleSide {
+  none,
+  top,
+  left,
+  right,
+  bottom,
+  topLeft,
+  topRight,
+  bottomLeft,
+  bottomRight
+}
 
 class Crop extends StatefulWidget {
   final ImageProvider image;
@@ -228,8 +238,8 @@ class CropState extends State<Crop> with TickerProviderStateMixin, Drag {
 
     if (Rect.fromLTWH(
       viewRect.left + _kCropHandleHitSize,
-      viewRect.bottom - _kCropHandleHitSize/2,
-      viewRect.width - 2*_kCropHandleHitSize,
+      viewRect.bottom - _kCropHandleHitSize / 2,
+      viewRect.width - 2 * _kCropHandleHitSize,
       _kCropHandleHitSize,
     ).contains(localPoint)) {
       return _CropHandleSide.bottom;
@@ -237,27 +247,27 @@ class CropState extends State<Crop> with TickerProviderStateMixin, Drag {
 
     if (Rect.fromLTWH(
       viewRect.left + _kCropHandleHitSize,
-      viewRect.top - _kCropHandleHitSize/2,
-      viewRect.width - 2*_kCropHandleHitSize,
+      viewRect.top - _kCropHandleHitSize / 2,
+      viewRect.width - 2 * _kCropHandleHitSize,
       _kCropHandleHitSize,
     ).contains(localPoint)) {
       return _CropHandleSide.top;
     }
 
     if (Rect.fromLTWH(
-      viewRect.left - _kCropHandleHitSize/2,
+      viewRect.left - _kCropHandleHitSize / 2,
       viewRect.top + _kCropHandleHitSize,
       _kCropHandleHitSize,
-      viewRect.height - 2*_kCropHandleHitSize,
+      viewRect.height - 2 * _kCropHandleHitSize,
     ).contains(localPoint)) {
       return _CropHandleSide.left;
     }
 
     if (Rect.fromLTWH(
-      viewRect.right - _kCropHandleHitSize/2,
+      viewRect.right - _kCropHandleHitSize / 2,
       viewRect.top + _kCropHandleHitSize,
       _kCropHandleHitSize,
-      viewRect.height - 2*_kCropHandleHitSize,
+      viewRect.height - 2 * _kCropHandleHitSize,
     ).contains(localPoint)) {
       return _CropHandleSide.right;
     }
