@@ -193,18 +193,34 @@ class CropState extends State<Crop> with TickerProviderStateMixin, Drag {
     if (imageWidth == null || imageHeight == null) {
       return Rect.zero;
     }
-    final ascpectRatio = max( (imageWidth / imageHeight), 1);
-    final width = 1.0;
-    final height = (imageWidth * viewWidth * width) /
-        (imageHeight * viewHeight * ascpectRatio);
-    return Rect.fromLTWH((1.0 - width) / 2, (1.0 - height) / 2, width, height);
+
+    if (imageWidth < imageHeight) {
+      final ascpectRatio = (imageHeight / imageWidth);
+      final height = 1.0;
+      final width =
+          (imageHeight * viewHeight) / (imageWidth * viewWidth * ascpectRatio);
+      return Rect.fromLTWH(
+          (1.0 - width) / 2, (1.0 - height) / 2, width, height);
+    } else {
+      final ascpectRatio = (imageWidth / imageHeight);
+      final width = 1.0;
+      final height = (imageWidth * viewWidth * width) /
+          (imageHeight * viewHeight * ascpectRatio);
+      return Rect.fromLTWH(
+          (1.0 - width) / 2, (1.0 - height) / 2, width, height);
+    }
   }
 
   void _updateImage(ImageInfo imageInfo, bool synchronousCall) {
     WidgetsBinding.instance.addPostFrameCallback((timeStamp) {
       setState(() {
         _image = imageInfo.image;
-        _ratio = _boundaries.width / _image.width;
+
+        if (_image.width > _image.height) {
+          _ratio = _boundaries.width / _image.width;
+        } else {
+          _ratio = _boundaries.height / _image.height;
+        }
 
         final viewWidth = _boundaries.width / (_image.width * _ratio);
         final viewHeight = _boundaries.height / (_image.height * _ratio);
@@ -332,8 +348,8 @@ class CropState extends State<Crop> with TickerProviderStateMixin, Drag {
     );
 
     return Rect.fromLTWH(
-      viewRect.left + _kCropHandleHitSize/2,
-      viewRect.bottom - _kCropHandleHitSize/2,
+      viewRect.left + _kCropHandleHitSize / 2,
+      viewRect.bottom - _kCropHandleHitSize / 2,
       viewRect.width - _kCropHandleHitSize,
       viewRect.height - _kCropHandleHitSize,
     ).contains(localPoint);
@@ -366,47 +382,10 @@ class CropState extends State<Crop> with TickerProviderStateMixin, Drag {
       }
     }
 
-    // adjust to aspect ratio if needed
-    if (widget.aspectRatio != null && widget.aspectRatio > 0.0) {
-      final width = areaRight - areaLeft;
-      final height = (_image.width * _view.width * width) /
-          (_image.height * _view.height * widget.aspectRatio);
-
-      if (top != null) {
-        areaTop = areaBottom - height;
-        if (areaTop < 0.0) {
-          areaTop = 0.0;
-          areaBottom = height;
-        }
-      } else {
-        areaBottom = areaTop + height;
-        if (areaBottom > 1.0) {
-          areaTop = 1.0 - height;
-          areaBottom = 1.0;
-        }
-      }
-    }
-
     // ensure to remain within bounds of the view
-    if (areaLeft < 0.0) {
-      areaLeft = 0.0;
-      areaRight = _area.width;
-    } else if (areaRight > 1.0) {
-      areaLeft = 1.0 - _area.width;
-      areaRight = 1.0;
-    }
-
-    if (areaTop < 0.0) {
-      areaTop = 0.0;
-      areaBottom = _area.height;
-    } else if (areaBottom > 1.0) {
-      areaTop = 1.0 - _area.height;
-      areaBottom = 1.0;
-    }
-
     if (areaLeft < _previousArea.left) {
       areaLeft = _area.left;
-      areaRight = _area.width;
+      areaRight = _area.right;
     } else if (areaRight > _previousArea.right) {
       areaLeft = _area.right - _area.width;
       areaRight = _area.right;
