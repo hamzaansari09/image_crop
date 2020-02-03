@@ -6,7 +6,7 @@ const _kCropGridColor = const Color.fromRGBO(0xd0, 0xd0, 0xd0, 0.9);
 const _kCropOverlayColor = const Color.fromRGBO(0x0, 0x0, 0x0, 0.3);
 const _kCropHandleSize = 10.0;
 const _kCropHandleHitSize = 48.0;
-const _kCropMinFraction = 0.2;
+const _kCropMinFraction = 0.1;
 const _kCropBorderColor = Color(0xff55bbea);
 
 enum _CropAction { none, cropping, moving }
@@ -117,10 +117,10 @@ class CropState extends State<Crop> with TickerProviderStateMixin, Drag {
     _getImage();
   }
 
-  void _getImage({bool force: false}) {
+  void _getImage() {
     final oldImageStream = _imageStream;
     _imageStream = widget.image.resolve(createLocalImageConfiguration(context));
-    if (_imageStream.key != oldImageStream?.key || force) {
+    if (_imageStream.key != oldImageStream?.key) {
       oldImageStream?.removeListener(_imageListener);
       _imageListener =
           ImageStreamListener(_updateImage, onError: widget.onImageError);
@@ -411,16 +411,19 @@ class CropState extends State<Crop> with TickerProviderStateMixin, Drag {
     var areaBottom = _area.bottom + (y ?? 0.0);
 
     // ensure to remain within bounds of the view
-    if (areaLeft < 0.0 || areaRight > 1.0 || areaTop < _previousArea.top || areaBottom > _previousArea.bottom) {
+    if (areaLeft < 0.0 ||
+        areaRight > 1.0 ||
+        areaTop < _previousArea.top ||
+        areaBottom > _previousArea.bottom) {
       return;
-    } 
+    }
     setState(() {
       _area = Rect.fromLTRB(areaLeft, areaTop, areaRight, areaBottom);
     });
   }
 
   void _handleScaleUpdate(ScaleUpdateDetails details) {
-    if (_action == _CropAction.none){
+    if (_action == _CropAction.none) {
       if (_handle == _CropHandleSide.none) {
         _action = _CropAction.moving;
       } else {
@@ -452,14 +455,15 @@ class CropState extends State<Crop> with TickerProviderStateMixin, Drag {
       } else if (_handle == _CropHandleSide.bottomRight) {
         _updateArea(right: dx, bottom: dy);
       }
-    } else if (_action == _CropAction.moving && _shouldMoveCropRect(details.focalPoint)) {
+    } else if (_action == _CropAction.moving &&
+        _shouldMoveCropRect(details.focalPoint)) {
       final delta = details.focalPoint - _lastFocalPoint;
       _lastFocalPoint = details.focalPoint;
       final dx = delta.dx / _boundaries.width;
       final dy = delta.dy / _boundaries.height;
       //TODO: handle crop box movement
       // _moveCropArea(x: dx , y: dy);
-    } 
+    }
   }
 }
 
@@ -493,6 +497,10 @@ class _CropPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    if (image == null) {
+      return;
+    }
+
     final rect = Rect.fromLTWH(
       _kCropHandleSize / 2,
       _kCropHandleSize / 2,
@@ -505,25 +513,24 @@ class _CropPainter extends CustomPainter {
 
     final paint = Paint()..isAntiAlias = false;
 
-    if (image != null) {
-      final src = Rect.fromLTWH(
-        0.0,
-        0.0,
-        image.width.toDouble(),
-        image.height.toDouble(),
-      );
-      final dst = Rect.fromLTWH(
-        view.left * image.width * ratio,
-        view.top * image.height * ratio,
-        image.width * ratio,
-        image.height * ratio,
-      );
+    final imageRect = Rect.fromLTWH(
+      view.left * image.width * ratio,
+      view.top * image.height * ratio,
+      image.width * ratio,
+      image.height * ratio,
+    );
 
-      canvas.save();
-      canvas.clipRect(Rect.fromLTWH(0.0, 0.0, rect.width, rect.height));
-      canvas.drawImageRect(image, src, dst, paint);
-      canvas.restore();
-    }
+    final src = Rect.fromLTWH(
+      0.0,
+      0.0,
+      image.width.toDouble(),
+      image.height.toDouble(),
+    );
+
+    canvas.save();
+    canvas.clipRect(Rect.fromLTWH(0.0, 0.0, rect.width, rect.height));
+    canvas.drawImageRect(image, src, imageRect, paint);
+    canvas.restore();
 
     paint.color = _kCropOverlayColor;
 
@@ -577,7 +584,7 @@ class _CropPainter extends CustomPainter {
   }
 
   void _ovalWithBorder(Canvas canvas, Offset center, {double radius = 5}) {
-    Paint paintCircle = Paint()..color = Color.fromRGBO(0xd0, 0xd0, 0xd0, 1);
+    Paint paintCircle = Paint()..color = Color(0xffffffff);
 
     Paint paintBorder = Paint()
       ..color = _kCropBorderColor
