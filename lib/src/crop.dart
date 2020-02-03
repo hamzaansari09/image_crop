@@ -470,6 +470,10 @@ class _CropPainter extends CustomPainter {
   final Rect area;
   final double active;
 
+  final double textContainerWidth = 128;
+  final double textContainerHeight = 30;
+  final String questionInfoText = 'Fit only 1 question';
+
   _CropPainter({
     this.image,
     this.view,
@@ -546,6 +550,12 @@ class _CropPainter extends CustomPainter {
       _drawHandles(canvas, boundaries);
     }
 
+    final textContainerRect = Rect.fromLTWH(
+        (rect.width - textContainerWidth) / 2,
+        imageRect.bottom + 15,
+        textContainerWidth,
+        textContainerHeight);
+    _createTextInfo(canvas, textContainerRect, rect.width);
     canvas.restore();
   }
 
@@ -608,5 +618,32 @@ class _CropPainter extends CustomPainter {
     }
 
     canvas.drawPath(path, paint);
+  }
+
+  void _createTextInfo(
+      Canvas canvas, Rect textContainerRect, double containerWidth) {
+    Paint paint = Paint()
+      ..color = Color(0xff222222)
+      ..style = PaintingStyle.fill;
+
+    canvas
+      ..drawRRect(
+          RRect.fromRectAndRadius(
+              textContainerRect, Radius.circular(textContainerHeight / 2)),
+          paint);
+
+    final TextStyle pillTextStyle = TextStyle(
+      fontWeight: FontWeight.bold,
+      fontSize: 12.0,
+    );
+    final textSpan = TextSpan(text: questionInfoText, style: pillTextStyle);
+    final textPainter = TextPainter(
+        text: textSpan,
+        textAlign: TextAlign.center,
+        textDirection: TextDirection.ltr);
+    textPainter.layout(
+      minWidth: containerWidth,
+    );
+    textPainter.paint(canvas, Offset(0, textContainerRect.top + 8));
   }
 }
