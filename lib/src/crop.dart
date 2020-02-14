@@ -246,25 +246,25 @@ class CropState extends State<Crop> with TickerProviderStateMixin, Drag {
   _CropHandleSide _hitCropHandle(Offset localPoint) {
     final boundaries = _boundaries;
     final viewRect = Rect.fromLTWH(
-      _boundaries.width * _area.left,
+      boundaries.width * _area.left,
       boundaries.height * _area.top,
       boundaries.width * _area.width,
       boundaries.height * _area.height,
     ).deflate(_kCropHandleSize / 2);
 
     if (Rect.fromLTWH(
-      viewRect.left + _kCropHandleHitSize,
+      viewRect.left + _kCropHandleHitSize/2,
       viewRect.bottom - _kCropHandleHitSize / 2,
-      viewRect.width - 2 * _kCropHandleHitSize,
+      viewRect.width - _kCropHandleHitSize,
       _kCropHandleHitSize,
     ).contains(localPoint)) {
       return _CropHandleSide.bottom;
     }
 
     if (Rect.fromLTWH(
-      viewRect.left + _kCropHandleHitSize,
-      viewRect.top - _kCropHandleHitSize / 2,
-      viewRect.width - 2 * _kCropHandleHitSize,
+      viewRect.left + _kCropHandleHitSize/2,
+      viewRect.top - _kCropHandleHitSize/2,
+      viewRect.width - _kCropHandleHitSize,
       _kCropHandleHitSize,
     ).contains(localPoint)) {
       return _CropHandleSide.top;
@@ -274,7 +274,7 @@ class CropState extends State<Crop> with TickerProviderStateMixin, Drag {
       viewRect.left - _kCropHandleHitSize / 2,
       viewRect.top + _kCropHandleHitSize,
       _kCropHandleHitSize,
-      viewRect.height - 2 * _kCropHandleHitSize,
+      viewRect.height - _kCropHandleHitSize,
     ).contains(localPoint)) {
       return _CropHandleSide.left;
     }
@@ -283,7 +283,7 @@ class CropState extends State<Crop> with TickerProviderStateMixin, Drag {
       viewRect.right - _kCropHandleHitSize / 2,
       viewRect.top + _kCropHandleHitSize,
       _kCropHandleHitSize,
-      viewRect.height - 2 * _kCropHandleHitSize,
+      viewRect.height - _kCropHandleHitSize,
     ).contains(localPoint)) {
       return _CropHandleSide.right;
     }
@@ -341,18 +341,14 @@ class CropState extends State<Crop> with TickerProviderStateMixin, Drag {
   bool _shouldMoveCropRect(Offset localPoint) {
     final boundaries = _boundaries;
     final viewRect = Rect.fromLTWH(
-      _boundaries.width * _area.left,
+      boundaries.width * _area.left,
       boundaries.height * _area.top,
       boundaries.width * _area.width,
       boundaries.height * _area.height,
     );
 
-    return Rect.fromLTWH(
-      viewRect.left + _kCropHandleHitSize / 2,
-      viewRect.bottom - _kCropHandleHitSize / 2,
-      viewRect.width - _kCropHandleHitSize,
-      viewRect.height - _kCropHandleHitSize,
-    ).contains(localPoint);
+    final innerRect = viewRect.deflate(_kCropHandleHitSize / 2);
+    return innerRect.contains(localPoint);
   }
 
   void _handleScaleEnd(ScaleEndDetails details) {
@@ -411,8 +407,8 @@ class CropState extends State<Crop> with TickerProviderStateMixin, Drag {
     var areaBottom = _area.bottom + (y ?? 0.0);
 
     // ensure to remain within bounds of the view
-    if (areaLeft < 0.0 ||
-        areaRight > 1.0 ||
+    if (areaLeft < _previousArea.left ||
+        areaRight > _previousArea.right ||
         areaTop < _previousArea.top ||
         areaBottom > _previousArea.bottom) {
       return;
@@ -457,11 +453,11 @@ class CropState extends State<Crop> with TickerProviderStateMixin, Drag {
       }
     } else if (_action == _CropAction.moving &&
         _shouldMoveCropRect(details.focalPoint)) {
+          print('Contains');
       final delta = details.focalPoint - _lastFocalPoint;
       _lastFocalPoint = details.focalPoint;
       final dx = delta.dx / _boundaries.width;
       final dy = delta.dy / _boundaries.height;
-      //TODO: handle crop box movement
       // _moveCropArea(x: dx , y: dy);
     }
   }
@@ -557,12 +553,7 @@ class _CropPainter extends CustomPainter {
       _drawHandles(canvas, boundaries);
     }
 
-    final textContainerRect = Rect.fromLTWH(
-        (rect.width - textContainerWidth) / 2,
-        imageRect.bottom + 15,
-        textContainerWidth,
-        textContainerHeight);
-    _createTextInfo(canvas, textContainerRect, rect.width);
+    _createTextInfo(canvas, imageRect.bottom + 15, rect.width);
     canvas.restore();
   }
 
@@ -627,11 +618,29 @@ class _CropPainter extends CustomPainter {
     canvas.drawPath(path, paint);
   }
 
-  void _createTextInfo(
-      Canvas canvas, Rect textContainerRect, double containerWidth) {
+  _createTextInfo(Canvas canvas, double textContainerTop, double containerWidth) {
+
     Paint paint = Paint()
       ..color = Color(0xff222222)
       ..style = PaintingStyle.fill;
+
+    final TextStyle pillTextStyle = TextStyle(
+      fontWeight: FontWeight.bold,
+      fontSize: 14.0,
+    );
+    final textSpan = TextSpan(text: questionInfoText, style: pillTextStyle);
+    final textPainter = TextPainter(
+        text: textSpan,
+        textAlign: TextAlign.center,
+        textDirection: TextDirection.ltr);
+    textPainter.layout();
+
+    final textContainerHeight = textPainter.height + 16;
+    final textContainerRect = Rect.fromLTWH(
+        (containerWidth - textPainter.width) / 2,
+        textContainerTop,
+        textPainter.width + 16,
+        textContainerHeight);
 
     canvas
       ..drawRRect(
@@ -639,18 +648,6 @@ class _CropPainter extends CustomPainter {
               textContainerRect, Radius.circular(textContainerHeight / 2)),
           paint);
 
-    final TextStyle pillTextStyle = TextStyle(
-      fontWeight: FontWeight.bold,
-      fontSize: 12.0,
-    );
-    final textSpan = TextSpan(text: questionInfoText, style: pillTextStyle);
-    final textPainter = TextPainter(
-        text: textSpan,
-        textAlign: TextAlign.center,
-        textDirection: TextDirection.ltr);
-    textPainter.layout(
-      minWidth: containerWidth,
-    );
-    textPainter.paint(canvas, Offset(0, textContainerRect.top + 8));
+    textPainter.paint(canvas, Offset(textContainerRect.left + 8, textContainerRect.top + 8));
   }
 }
