@@ -169,9 +169,9 @@ class CropState extends State<Crop> with TickerProviderStateMixin, Drag {
     }
   }
 
-  Size get _boundaries =>
-      _surfaceKey.currentContext.size -
-      Offset(_kCropHandleSize, _kCropHandleSize);
+  Size get _getGestureBoundaries => _surfaceKey.currentContext.size;
+
+  Size get _boundaries => _getGestureBoundaries - Offset(_kCropHandleSize, _kCropHandleSize);
 
   Offset _getLocalPoint(Offset point) {
     final RenderBox box = _surfaceKey.currentContext.findRenderObject();
@@ -224,20 +224,24 @@ class CropState extends State<Crop> with TickerProviderStateMixin, Drag {
 
         final viewWidth = _boundaries.width / (_image.width * _ratio);
         final viewHeight = _boundaries.height / (_image.height * _ratio);
-
-        _area = _calculateDefaultArea(
-          viewWidth: viewWidth,
-          viewHeight: viewHeight,
-          imageWidth: _image.width,
-          imageHeight: _image.height,
-        );
         _view = Rect.fromLTWH(
           (viewWidth - 1.0) / 2,
           (viewHeight - 1.0) / 2,
           viewWidth,
           viewHeight,
         );
-        _previousArea = _area;
+        _previousArea = _calculateDefaultArea(
+          viewWidth: viewWidth,
+          viewHeight: viewHeight,
+          imageWidth: _image.width,
+          imageHeight: _image.height,
+        );
+        _area = _calculateDefaultArea(
+          viewWidth: viewWidth,
+          viewHeight: viewHeight,
+          imageWidth: _image.width,
+          imageHeight: _image.height,
+        ).deflate(0.02);
       });
     });
     WidgetsBinding.instance.ensureVisualUpdate();
@@ -333,20 +337,24 @@ class CropState extends State<Crop> with TickerProviderStateMixin, Drag {
     _action = _CropAction.none;
     _handle = _hitCropHandle(_getLocalPoint(details.focalPoint));
 
-    if (_handle != _CropHandleSide.none) {
+    if (_shouldMoveCropRect(details.focalPoint)) {
+      _action = _CropAction.moving;
+      _activate();
+    } else if (_handle != _CropHandleSide.none) {
       _activate();
     }
   }
 
-  bool _shouldMoveCropRect(Offset localPoint) {
-    final boundaries = _boundaries;
+  double get _appBarHeight => AppBar().preferredSize.height;
+
+  bool _shouldMoveCropRect(localPoint) {
+    final boundaries = _getGestureBoundaries;
     final viewRect = Rect.fromLTWH(
       boundaries.width * _area.left,
-      boundaries.height * _area.top,
+      boundaries.height * _area.top + _appBarHeight + _kCropHandleHitSize/2, //Adding app bar height because point is wrt to screen and also handle size 
       boundaries.width * _area.width,
       boundaries.height * _area.height,
     );
-
     final innerRect = viewRect.deflate(_kCropHandleHitSize / 2);
     return innerRect.contains(localPoint);
   }
@@ -407,10 +415,21 @@ class CropState extends State<Crop> with TickerProviderStateMixin, Drag {
     var areaBottom = _area.bottom + (y ?? 0.0);
 
     // ensure to remain within bounds of the view
-    if (areaLeft < _previousArea.left ||
-        areaRight > _previousArea.right ||
-        areaTop < _previousArea.top ||
-        areaBottom > _previousArea.bottom) {
+        if (areaTop < _previousArea.top) {
+          areaTop = _previousArea.top;
+          areaBottom = _area.bottom;
+        } else if (areaBottom > _previousArea.bottom) {
+          areaBottom = _previousArea.bottom;
+          areaTop = _area.top;
+        } else if (areaLeft < _previousArea.left) {
+          areaLeft = _previousArea.left;
+          areaRight = _area.right;
+        } else if (areaRight > _previousArea.right) {
+          areaRight = _previousArea.right;
+          areaLeft = _area.left;
+        }
+
+    if (areaLeft < _previousArea.left || areaRight > _previousArea.right) {
       return;
     }
     setState(() {
@@ -419,12 +438,9 @@ class CropState extends State<Crop> with TickerProviderStateMixin, Drag {
   }
 
   void _handleScaleUpdate(ScaleUpdateDetails details) {
-    if (_action == _CropAction.none) {
-      if (_handle == _CropHandleSide.none) {
-        _action = _CropAction.moving;
-      } else {
+    
+    if (_action == _CropAction.none && _handle != _CropHandleSide.none) {
         _action = _CropAction.cropping;
-      }
     }
 
     if (_action == _CropAction.cropping) {
@@ -451,14 +467,12 @@ class CropState extends State<Crop> with TickerProviderStateMixin, Drag {
       } else if (_handle == _CropHandleSide.bottomRight) {
         _updateArea(right: dx, bottom: dy);
       }
-    } else if (_action == _CropAction.moving &&
-        _shouldMoveCropRect(details.focalPoint)) {
-          print('Contains');
+    } else if (_action == _CropAction.moving) {
       final delta = details.focalPoint - _lastFocalPoint;
       _lastFocalPoint = details.focalPoint;
       final dx = delta.dx / _boundaries.width;
       final dy = delta.dy / _boundaries.height;
-      // _moveCropArea(x: dx , y: dy);
+      _moveCropArea(x: dx , y: dy);
     }
   }
 }
@@ -553,7 +567,7 @@ class _CropPainter extends CustomPainter {
       _drawHandles(canvas, boundaries);
     }
 
-    _createTextInfo(canvas, imageRect.bottom + 15, rect.width);
+    _createTextInfo(canvas, imageRect.top - 45, rect.width);
     canvas.restore();
   }
 
@@ -620,10 +634,6 @@ class _CropPainter extends CustomPainter {
 
   _createTextInfo(Canvas canvas, double textContainerTop, double containerWidth) {
 
-    Paint paint = Paint()
-      ..color = Color(0xff222222)
-      ..style = PaintingStyle.fill;
-
     final TextStyle pillTextStyle = TextStyle(
       fontWeight: FontWeight.bold,
       fontSize: 14.0,
@@ -641,12 +651,6 @@ class _CropPainter extends CustomPainter {
         textContainerTop,
         textPainter.width + 16,
         textContainerHeight);
-
-    canvas
-      ..drawRRect(
-          RRect.fromRectAndRadius(
-              textContainerRect, Radius.circular(textContainerHeight / 2)),
-          paint);
 
     textPainter.paint(canvas, Offset(textContainerRect.left + 8, textContainerRect.top + 8));
   }

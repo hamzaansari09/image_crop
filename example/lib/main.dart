@@ -74,7 +74,7 @@ class _MyAppState extends State<MyApp> {
                       .button
                       .copyWith(color: Colors.white),
                 ),
-                onPressed: () => _cropImage(),
+                onPressed: _cropImage,
               ),
               _buildOpenImage(),
             ],
