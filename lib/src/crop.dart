@@ -197,10 +197,9 @@ class CropState extends State<Crop> with TickerProviderStateMixin, Drag {
     if (imageWidth < imageHeight) {
       final ascpectRatio = (imageHeight / imageWidth);
       final height = 1.0;
-      final width =
-          (imageHeight * viewHeight) / (imageWidth * viewWidth * ascpectRatio);
+      final width = (imageHeight * viewHeight) / (imageWidth * viewWidth * ascpectRatio);
       return Rect.fromLTWH(
-          (1.0 - width) / 2, (1.0 - height) / 2, width, height);
+          max(0, (1.0 - width)) / 2, (1.0 - height) / 2, min(1,width), height);
     } else {
       final ascpectRatio = (imageWidth / imageHeight);
       final width = 1.0;
