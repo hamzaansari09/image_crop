@@ -240,7 +240,14 @@ class CropState extends State<Crop> with TickerProviderStateMixin, Drag {
           viewHeight: viewHeight,
           imageWidth: _image.width,
           imageHeight: _image.height,
-        ).deflate(0.02);
+        );
+        if ((_image.width > 120) & (_image.height > 120)) {
+          /*
+          This will reduce crop box with makes it better to crop image
+          But deflate only if image size is large enough
+          */
+          _area = _area.deflate(0.02);
+        }
       });
     });
     WidgetsBinding.instance.ensureVisualUpdate();
